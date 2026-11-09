@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BMI 身體質量指數計算器</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    
+    <style>
+        * {
+            font-family: 'Noto Sans TC', sans-serif;
+        }
+
+        /* 儀表板指針平滑過渡 */
+        .gauge-pointer {
+            transition: transform 1s cubic-bezier(0.34, 1.56, 0.64, 1);
+        }
+
+        /* 隱藏滾動條 */
+        .no-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .no-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-50 min-h-screen text-slate-800 flex flex-col justify-between selection:bg-teal-500 selection:text-white">
+
+    <!-- 頁首 Header -->
+    <header class="w-full bg-gradient-to-r from-teal-600 to-cyan-600 text-white shadow-md">
+        <div class="max-w-4xl mx-auto px-4 py-5 flex items-center justify-between">
+            <div class="flex items-center space-x-3">
+                <div class="w-10 h-10 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center text-xl shadow-inner">
+                    <i class="fa-solid fa-heart-pulse"></i>
+                </div>
+                <div>
+                    <h1 class="text-xl md:text-2xl font-black tracking-wide">BMI 健康計算器</h1>
+                    <p class="text-xs text-teal-100">依據台灣衛生福利部 (MOHW) 標準計算</p>
+                </div>
+            </div>
+            <!-- 公制 / 英制 切換按鈕 -->
+            <div class="bg-white/10 p-1 rounded-xl flex border border-white/20">
+                <button id="metricBtn" onclick="setUnitSystem('metric')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition bg-white text-teal-700 shadow-sm">
+                    公制 (cm/kg)
+                </button>
+                <button id="imperialBtn" onclick="setUnitSystem('imperial')" class="px-3 py-1.5 rounded-lg text-xs font-bold transition text-white hover:bg-white/10">
+                    英制 (ft/lbs)
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- 主要內容區 -->
+    <main class="max-w-4xl mx-auto px-4 py-8 w-full flex-1 grid grid-cols-1 md:grid-cols-12 gap-6">
+
+        <!-- 左側：輸入表單與儀表板 -->
+        <div class="md:col-span-7 flex flex-col gap-6">
+            
+            <!-- 輸入區域卡片 -->
+            <div class="bg-white rounded-3xl p-6 shadow-xl border border-slate-100">
+                <h2 class="text-lg font-bold text-slate-700 mb-4 flex items-center gap-2">
+                    <i class="fa-solid fa-sliders text-teal-500"></i> 輸入身體數據
+                </h2>
+
+                <form id="bmiForm" onsubmit="calculateBMI(event)" class="space-y-4">
+                    <!-- 公制輸入項 -->
+                    <div id="metricInputs" class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">身高 (cm)</label>
+                            <div class="relative">
+                                <input type="number" id="heightCm" step="0.1" min="50" max="250" placeholder="例如：175" required
+                                       class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition">
+                                <span class="absolute right-4 top-3.5 text-xs text-slate-400 font-bold">cm</span>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">體重 (kg)</label>
+                            <div class="relative">
+                                <input type="number" id="weightKg" step="0.1" min="10" max="300" placeholder="例如：68" required
+                                       class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition">
+                                <span class="absolute right-4 top-3.5 text-xs text-slate-400 font-bold">kg</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 英制輸入項 (預設隱藏) -->
+                    <div id="imperialInputs" class="grid grid-cols-1 sm:grid-cols-2 gap-4 hidden">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">身高 (英呎 / 吋)</label>
+                            <div class="grid grid-cols-2 gap-2">
+                                <div class="relative">
+                                    <input type="number" id="heightFt" min="1" max="8" placeholder="5"
+                                           class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3 py-3 text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition">
+                                    <span class="absolute right-3 top-3.5 text-xs text-slate-400 font-bold">ft</span>
+                                </div>
+                                <div class="relative">
+                                    <input type="number" id="heightIn" min="0" max="11" placeholder="9"
+                                           class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-3 py-3 text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition">
+                                    <span class="absolute right-3 top-3.5 text-xs text-slate-400 font-bold">in</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-500 mb-1">體重 (磅 lbs)</label>
+                            <div class="relative">
+                                <input type="number" id="weightLbs" step="0.1" min="20" max="700" placeholder="例如：150"
+                                       class="w-full bg-slate-50 border border-slate-200 rounded-2xl px-4 py-3 text-slate-800 font-bold focus:outline-none focus:ring-2 focus:ring-teal-500 focus:bg-white transition">
+                                <span class="absolute right-4 top-3.5 text-xs text-slate-400 font-bold">lbs</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <button type="submit" 
+                            class="w-full py-3.5 bg-gradient-to-r from-teal-500 to-emerald-500 hover:from-teal-600 hover:to-emerald-600 text-white font-black rounded-2xl shadow-lg shadow-teal-500/20 transition transform active:scale-[0.99] flex items-center justify-center gap-2 text-base">
+                        <i class="fa-solid fa-calculator"></i> 計算 BMI 指數
+                    </button>
+                </form>
+            </div>
+
+            <!-- 視覺化儀表板區域 -->
+            <div class="bg-white rounded-3xl p-6 shadow-xl border border-slate-100 flex flex-col items-center justify-center relative overflow-hidden">
+                <!-- 未計算前的遮罩狀態 -->
+                <div id="emptyState" class="py-12 flex flex-col items-center text-center">
+                    <div class="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center text-2xl mb-3">
+                        <i class="fa-solid fa-chart-pie"></i>
+                    </div>
+                    <p class="text-slate-500 font-bold">請輸入身高與體重開始計算</p>
+                    <p class="text-xs text-slate-400 mt-1">系統將根據結果為您分析身體健康狀況</p>
+                </div>
+
+                <!-- 計算後的結果儀表板 -->
+                <div id="resultState" class="w-full hidden flex-col items-center">
+                    <div class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-1">您的 BMI 數據結果</div>
+                    
+                    <!-- BMI 數值顯示 -->
+                    <div id="bmiValueDisplay" class="text-5xl font-black text-slate-800 mb-1">0.0</div>
+                    
+                    <!-- 分類標籤 -->
+                    <div id="categoryBadge" class="px-4 py-1 rounded-full text-sm font-bold bg-slate-200 text-slate-700 mb-6 shadow-sm">
+                        未計算
+                    </div>
+
+                    <!-- 半圓形 BMI 儀表盤 -->
+                    <div class="relative w-64 h-32 overflow-hidden mb-4">
+                        <!-- 儀表盤弧線漸層 -->
+                        <div class="w-64 h-64 rounded-full border-[18px] border-transparent border-t-sky-400 border-r-emerald-400 border-b-amber-400 border-l-rose-500 rotate-[45deg] box-border"></div>
+                        <!-- 儀表刻度遮罩底圖 (使用 CSS 三角針表示) -->
+                        <div id="gaugePointer" class="gauge-pointer absolute bottom-0 left-1/2 w-2 h-28 bg-slate-700 -ml-1 origin-bottom rounded-full" style="transform: rotate(-90deg);">
+                            <div class="w-4 h-4 bg-slate-800 rounded-full -ml-1 -mt-1 shadow"></div>
+                        </div>
+                    </div>
+
+                    <!-- 理想體重建議範圍 -->
+                    <div class="w-full bg-teal-50/60 rounded-2xl p-4 border border-teal-100 text-center">
+                        <span class="text-xs text-teal-700 font-bold block">健康理想體重範圍</span>
+                        <span id="idealWeightRange" class="text-lg font-black text-teal-800">0 - 0 kg</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 右側：分析結果卡片 & 歷史紀錄 -->
+        <div class="md:col-span-5 flex flex-col gap-6">
+
+            <!-- 衛福部 MOHW 標準對照卡片 / 建議 -->
+            <div class="bg-white rounded-3xl p-6 shadow-xl border border-slate-100">
+                <h3 class="text-base font-bold text-slate-700 mb-3 flex items-center gap-2">
+                    <i class="fa-solid fa-notes-medical text-teal-500"></i> 健康建議與對照
+                </h3>
+                
+                <!-- 專屬健康建議 (計算後顯示) -->
+                <div id="adviceBox" class="mb-4 p-3.5 bg-slate-50 rounded-2xl text-xs text-slate-600 leading-relaxed hidden border border-slate-100">
+                    <span id="adviceText">計算後將提供針對性的個人健康運動建議。</span>
+                </div>
+
+                <!-- 衛福部標準列表 -->
+                <div class="space-y-1.5 text-xs">
+                    <div class="flex justify-between p-2 rounded-xl bg-sky-50 text-sky-800 font-medium">
+                        <span>體重過輕</span>
+                        <span class="font-bold">BMI &lt; 18.5</span>
+                    </div>
+                    <div class="flex justify-between p-2 rounded-xl bg-emerald-50 text-emerald-800 font-medium">
+                        <span>健康適中</span>
+                        <span class="font-bold">18.5 &le; BMI &lt; 24</span>
+                    </div>
+                    <div class="flex justify-between p-2 rounded-xl bg-yellow-50 text-yellow-800 font-medium">
+                        <span>體重過重</span>
+                        <span class="font-bold">24 &le; BMI &lt; 27</span>
+                    </div>
+                    <div class="flex justify-between p-2 rounded-xl bg-orange-50 text-orange-800 font-medium">
+                        <span>輕度肥胖</span>
+                        <span class="font-bold">27 &le; BMI &lt; 30</span>
+                    </div>
+                    <div class="flex justify-between p-2 rounded-xl bg-red-50 text-red-800 font-medium">
+                        <span>中度肥胖</span>
+                        <span class="font-bold">30 &le; BMI &lt; 35</span>
+                    </div>
+                    <div class="flex justify-between p-2 rounded-xl bg-rose-100 text-rose-900 font-bold">
+                        <span>重度肥胖</span>
+                        <span class="font-bold">BMI &ge; 35</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 歷史紀錄 -->
+            <div class="bg-white rounded-3xl p-6 shadow-xl border border-slate-100 flex-1 flex flex-col">
+                <div class="flex justify-between items-center mb-3">
+                    <h3 class="text-base font-bold text-slate-700 flex items-center gap-2">
+                        <i class="fa-solid fa-clock-rotate-left text-teal-500"></i> 歷史計算紀錄
+                    </h3>
+                    <button onclick="clearHistory()" class="text-xs text-slate-400 hover:text-rose-500 font-bold transition">
+                        清空紀錄
+                    </button>
+                </div>
+
+                <div id="historyList" class="space-y-2 overflow-y-auto max-h-56 pr-1 no-scrollbar flex-1">
+                    <!-- 紀錄動態插入區域 -->
+                    <p id="noHistoryText" class="text-xs text-slate-400 text-center py-6">暫無歷史紀錄</p>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- 頁尾 Footer -->
+    <footer class="w-full bg-slate-200 text-slate-500 text-xs py-4 text-center border-t border-slate-300">
+        <p>© 2026 BMI 健康體重管理系統 • 數據標準參考衛生福利部國民健康署</p>
+    </footer>
+
+    <script>
+        // 當前單位系統 'metric' | 'imperial'
+        let currentUnit = 'metric';
+        let historyData = JSON.parse(localStorage.getItem('bmi_history_records')) || [];
+
+        // 單位切換
+        function setUnitSystem(unit) {
+            currentUnit = unit;
+            const metricBtn = document.getElementById('metricBtn');
+            const imperialBtn = document.getElementById('imperialBtn');
+            const metricInputs = document.getElementById('metricInputs');
+            const imperialInputs = document.getElementById('imperialInputs');
+
+            if (unit === 'metric') {
+                metricBtn.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition bg-white text-teal-700 shadow-sm";
+                imperialBtn.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition text-white hover:bg-white/10";
+                metricInputs.classList.remove('hidden');
+                imperialInputs.classList.add('hidden');
+                document.getElementById('heightCm').required = true;
+                document.getElementById('weightKg').required = true;
+                document.getElementById('heightFt').required = false;
+                document.getElementById('heightIn').required = false;
+                document.getElementById('weightLbs').required = false;
+            } else {
+                imperialBtn.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition bg-white text-teal-700 shadow-sm";
+                metricBtn.className = "px-3 py-1.5 rounded-lg text-xs font-bold transition text-white hover:bg-white/10";
+                imperialInputs.classList.remove('hidden');
+                metricInputs.classList.add('hidden');
+                document.getElementById('heightCm').required = false;
+                document.getElementById('weightKg').required = false;
+                document.getElementById('heightFt').required = true;
+                document.getElementById('heightIn').required = true;
+                document.getElementById('weightLbs').required = true;
+            }
+        }
+
+        // 計算 BMI 主邏輯
+        function calculateBMI(e) {
+            e.preventDefault();
+
+            let heightCm = 0;
+            let weightKg = 0;
+
+            if (currentUnit === 'metric') {
+                heightCm = parseFloat(document.getElementById('heightCm').value);
+                weightKg = parseFloat(document.getElementById('weightKg').value);
+            } else {
+                const ft = parseFloat(document.getElementById('heightFt').value) || 0;
+                const inches = parseFloat(document.getElementById('heightIn').value) || 0;
+                const lbs = parseFloat(document.getElementById('weightLbs').value) || 0;
+                
+                // 單位轉換
+                heightCm = ((ft * 12) + inches) * 2.54;
+                weightKg = lbs * 0.453592;
+            }
+
+            if (!heightCm || !weightKg || heightCm <= 0 || weightKg <= 0) return;
+
+            const heightM = heightCm / 100;
+            const bmi = weightKg / (heightM * heightM);
+            const bmiRounded = bmi.toFixed(1);
+
+            // 計算理想體重區間 (BMI 18.5 ~ 24)
+            const minIdealWeight = (18.5 * heightM * heightM).toFixed(1);
+            const maxIdealWeight = (23.9 * heightM * heightM).toFixed(1);
+
+            // 取得衛福部分類標準與資訊
+            const status = getMOHWStatus(bmi);
+
+            // 渲染介面結果
+            displayResults(bmiRounded, status, minIdealWeight, maxIdealWeight, heightCm, weightKg);
+
+            // 儲存紀錄
+            saveRecord(bmiRounded, status.title, weightKg, heightCm);
+        }
+
+        // 依衛生福利部標準判定類別
+        function getMOHWStatus(bmi) {
+            if (bmi < 18.5) {
+                return {
+                    title: '體重過輕',
+                    colorClass: 'bg-sky-500 text-white',
+                    textColor: 'text-sky-500',
+                    angle: -75,
+                    advice: '您的體重偏輕，建議適度增加優質蛋白質與營養攝取，並搭配阻力訓練肌肉生長。'
+                };
+            } else if (bmi >= 18.5 && bmi < 24) {
+                return {
+                    title: '健康適中',
+                    colorClass: 'bg-emerald-500 text-white',
+                    textColor: 'text-emerald-500',
+                    angle: -30,
+                    advice: '恭喜！您的體重處於非常健康的標準範圍，請繼續保持均衡飲食與規律運動好習慣。'
+                };
+            } else if (bmi >= 24 && bmi < 27) {
+                return {
+                    title: '體重過重',
+                    colorClass: 'bg-yellow-500 text-white',
+                    textColor: 'text-yellow-500',
+                    angle: 15,
+                    advice: '您的體重已達過重標準。建議減少高熱量食物與加工食品攝取，每日進行 30 分鐘以上有氧運動。'
+                };
+            } else if (bmi >= 27 && bmi < 30) {
+                return {
+                    title: '輕度肥胖',
+                    colorClass: 'bg-orange-500 text-white',
+                    textColor: 'text-orange-500',
+                    angle: 45,
+                    advice: '已進入輕度肥胖，罹患心血管疾病風險增加。建議調整飲食結構（減糖減油）並尋求專業營養規劃。'
+                };
+            } else if (bmi >= 30 && bmi < 35) {
+                return {
+                    title: '中度肥胖',
+                    colorClass: 'bg-red-500 text-white',
+                    textColor: 'text-red-500',
+                    angle: 70,
+                    advice: '屬於中度肥胖健康警訊。建議諮詢醫師或營養師，訂定客製化減重健康管理計畫。'
+                };
+            } else {
+                return {
+                    title: '重度肥胖',
+                    colorClass: 'bg-rose-700 text-white',
+                    textColor: 'text-rose-700',
+                    angle: 90,
+                    advice: '重度肥胖對健康有顯著影響。請務必前往門診尋求醫師醫療專業協助與減重療程建議。'
+                };
+            }
+        }
+
+        // 顯示結果與轉動儀表
+        function displayResults(bmi, status, minWeight, maxWeight, heightCm, weightKg) {
+            document.getElementById('emptyState').classList.add('hidden');
+            const resultState = document.getElementById('resultState');
+            resultState.classList.remove('hidden');
+            resultState.classList.add('flex');
+
+            document.getElementById('bmiValueDisplay').textContent = bmi;
+            document.getElementById('bmiValueDisplay').className = `text-5xl font-black ${status.textColor} mb-1`;
+
+            const badge = document.getElementById('categoryBadge');
+            badge.textContent = status.title;
+            badge.className = `px-4 py-1 rounded-full text-sm font-bold shadow-sm ${status.colorClass} mb-6`;
+
+            // 設定理想體重
+            if (currentUnit === 'metric') {
+                document.getElementById('idealWeightRange').textContent = `${minWeight} - ${maxWeight} kg`;
+            } else {
+                const minLbs = (minWeight * 2.20462).toFixed(1);
+                const maxLbs = (maxWeight * 2.20462).toFixed(1);
+                document.getElementById('idealWeightRange').textContent = `${minLbs} - ${maxLbs} lbs`;
+            }
+
+            // 旋轉儀表指針
+            document.getElementById('gaugePointer').style.transform = `rotate(${status.angle}deg)`;
+
+            // 顯示健康建議
+            const adviceBox = document.getElementById('adviceBox');
+            adviceBox.classList.remove('hidden');
+            document.getElementById('adviceText').textContent = status.advice;
+        }
+
+        // 歷史紀錄相關操作
+        function saveRecord(bmi, statusTitle, weight, height) {
+            const dateStr = new Date().toLocaleDateString('zh-TW', { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit' });
+            const record = {
+                id: Date.now(),
+                bmi: bmi,
+                status: statusTitle,
+                weight: weight.toFixed(1),
+                date: dateStr
+            };
+
+            historyData.unshift(record);
+            if (historyData.length > 10) historyData.pop(); // 保留最多10筆
+
+            localStorage.setItem('bmi_history_records', JSON.stringify(historyData));
+            renderHistory();
+        }
+
+        function renderHistory() {
+            const container = document.getElementById('historyList');
+            if (historyData.length === 0) {
+                container.innerHTML = '<p id="noHistoryText" class="text-xs text-slate-400 text-center py-6">暫無歷史紀錄</p>';
+                return;
+            }
+
+            container.innerHTML = historyData.map(item => `
+                <div class="flex items-center justify-between p-3 bg-slate-50 hover:bg-slate-100/80 rounded-2xl border border-slate-100 transition">
+                    <div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-black text-slate-700">${item.bmi}</span>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-200 text-slate-700">${item.status}</span>
+                        </div>
+                        <span class="text-[10px] text-slate-400 font-medium">${item.date}</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-xs font-bold text-slate-600">${item.weight} kg</span>
+                        <button onclick="deleteRecord(${item.id})" class="text-slate-300 hover:text-rose-500 transition text-xs">
+                            <i class="fa-solid fa-trash-can"></i>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function deleteRecord(id) {
+            historyData = historyData.filter(item => item.id !== id);
+            localStorage.setItem('bmi_history_records', JSON.stringify(historyData));
+            renderHistory();
+        }
+
+        function clearHistory() {
+            historyData = [];
+            localStorage.removeItem('bmi_history_records');
+            renderHistory();
+        }
+
+        // 初始化
+        window.onload = () => {
+            renderHistory();
+        };
+    </script>
+</body>
+</html>
